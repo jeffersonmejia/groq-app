@@ -2,6 +2,7 @@
 import requests
 import socket
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,17 +27,51 @@ SYSTEM_PROMPT = (
     "Always answer in Spanish. Maximum 25 words."
 )
 
-def ask(question):
+MAX_MESSAGES = 20
+SUMMARY_FILE = "memory.json"
+
+if os.path.exists(SUMMARY_FILE):
+    with open(SUMMARY_FILE, "r") as f:
+        summary_memory = f.read().strip()
+else:
+    summary_memory = ""
+
+history = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+if summary_memory:
+    history.append({"role": "system", "content": f"Conversation summary so far: {summary_memory}"})
+
+def groq_call(messages):
     payload = {
         "model": MODEL,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": question}
-        ]
+        "messages": messages
     }
     r = requests.post(API_URL, headers=HEADERS, json=payload, timeout=30)
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
+
+def summarize():
+    global history, summary_memory
+    convo = "\n".join([f"{m['role']}: {m['content']}" for m in history if m["role"] != "system"])
+    prompt = [
+        {"role": "system", "content": "Summarize this conversation in Spanish preserving important technical facts."},
+        {"role": "user", "content": convo}
+    ]
+    summary = groq_call(prompt)
+    summary_memory = summary
+    with open(SUMMARY_FILE, "w") as f:
+        f.write(summary)
+    history = [{"role": "system", "content": SYSTEM_PROMPT}]
+    history.append({"role": "system", "content": f"Conversation summary so far: {summary_memory}"})
+
+def ask(question):
+    global history
+    history.append({"role": "user", "content": question})
+    answer = groq_call(history)
+    history.append({"role": "assistant", "content": answer})
+    if len(history) > MAX_MESSAGES:
+        summarize()
+    return answer
 
 def main():
     while True:
