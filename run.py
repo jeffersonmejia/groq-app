@@ -73,16 +73,20 @@ def ask(question):
         summarize()
     return answer
 
+COLOR_JEF = "\033[96m"
+COLOR_GROQ = "\033[95m"
+COLOR_RESET = "\033[0m"
+
 def main():
     while True:
-        q = input("[Jef]: ")
+        q = input(f"{COLOR_JEF}[Jef]{COLOR_RESET}: ")
         if q.lower() in ["exit", "quit", "salir"]:
             break
         try:
             answer = ask(q)
-            print(f"[Groq]: {answer}")
+            print(f"{COLOR_GROQ}[Groq]{COLOR_RESET}: {answer}")
         except Exception as e:
-            print("[Groq]: Error:", e)
+            print(f"{COLOR_GROQ}[Groq]{COLOR_RESET}: Error:", e)
 
 if __name__ == "__main__":
     main()
